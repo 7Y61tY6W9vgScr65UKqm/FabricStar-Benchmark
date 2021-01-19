@@ -1,0 +1,77 @@
+test:
+  name: fixed-asset
+  description: >-
+    This is a duration based benchmark targeting a Hyperledger Fabric network
+    using the `fixed-asset` NodeJS chaincode
+    contract that is interacted with via a Fabric-SDK-Node Gateway. Each test
+    round flexes a single chaincode method, and includes a null-operation to act
+    as a performance cost baseline.
+  workers:
+    type: local
+    number: 12
+  rounds:
+    - label: create-asset-100
+      description: >-
+        Test a submitTransaction() Gateway method against the NodeJS
+        `fixed-asset` Smart Contract method named `createAsset`, which inserts
+        an asset of size 2000 bytes into the World State database.
+      chaincodeID: fixed-asset
+      txDuration: 720
+      rateControl:
+        type: fixed-rate
+        opts:
+          tps: 200
+      workload:
+        module: benchmarks/lib/create-asset.js
+        arguments:
+          chaincodeID: fixed-asset
+          byteSize: 8000 
+monitors:
+    resource:
+    - module: prometheus
+      options:
+        url: "http://prometheus:9090"
+        push_url: "http://pushGateway:9091"
+        metrics:
+          include: [dev-.*, couch, peer, orderer, caliper]
+          queries:
+          - name: Avg Memory (MB)
+            query: 'sum(container_memory_rss{name=~".+"}) by (name)'
+            step: 10
+            label: name
+            statistic: avg
+            multiplier: 0.000001
+          - name:   CPU (%)
+            query: sum(rate(container_cpu_usage_seconds_total{name=~".+"}[1m])) by (name)
+            step: 10
+            label: name
+            statistic: avg
+            multiplier: 100
+          - name: Network In (MB)
+            query: sum(rate(container_network_receive_bytes_total{instance=~".+"}[1m])) by (instance)
+            step: 10
+            label: name
+            statistic: sum
+            multiplier: 0.000001
+          - name: Network Out (MB)
+            query: sum(rate(container_network_transmit_bytes_total{instance=~".+"}[1m])) by (instance)
+            step: 10
+            label: name
+            statistic: sum
+            multiplier: 0.000001
+          - name: Disc Write (MB)
+            query: sum(rate(container_fs_writes_bytes_total{name=~".+"}[1m])) by (name)
+            step: 10
+            label: name
+            statistic: sum
+            multiplier: 0.000001
+          - name: Disc Read (MB)
+            query: sum(rate(container_fs_reads_bytes_total{name=~".+"}[1m])) by (name)
+            step: 10
+            label: name
+            statistic: sum
+            multiplier: 0.000001
+
+observer:
+  type: prometheus
+  interval: 5            
